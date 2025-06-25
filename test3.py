@@ -64,7 +64,7 @@ FROM patient_app_billreports b
 JOIN patient_app_appointment a 
   ON a.patient_id_id = b.patient_id_id
 GROUP BY a.service_type
-ORDER BY total_revenue DESC;
+ORDER BY total_revenue DESC; 
 """
     elif choice == "3":
         return """
@@ -151,3 +151,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+# This code is designed to provide insights into hospital management data.
+# It connects to a PostgreSQL database and allows users to query various insights related to patient appointments
