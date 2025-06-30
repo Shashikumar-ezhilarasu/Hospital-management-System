@@ -24,6 +24,6 @@ also create .env file and add your gemini api key there.
 <img width="1582" alt="terminalview" src="https://github.com/user-attachments/assets/7271beb5-fa53-4efb-b2b2-0dd2f61a1517" />
 
 I have also tried creating a react based UI for this code, but it is working properly.
-i was thinking to add this feture as a component to it .
+i was thinking to add this feature as a component to the current project.
 
 <img width="1469" alt="Screenshot 2025-06-30 at 8 09 32 PM" src="https://github.com/user-attachments/assets/52c99053-a88e-4910-b2b5-7f6241a1bdc3" />
