@@ -1,198 +1,204 @@
-import psycopg2
-import os
-import google.generativeai as genai
-from dotenv import load_dotenv
-from datetime import datetime, timedelta
+import psycopg2  # PostgreSQL adapter for Python - used to connect and run queries on the PostgreSQL DB
+from datetime import datetime, timedelta  # For handling date-related logic (like filtering upcoming expiry)
 
-# Load environment variables
-load_dotenv()
-
-# --- SETUP GEMINI ---
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY", ""))
-
-# --- SETUP POSTGRES CONNECTION ---
+# --- DATABASE CONNECTION SETUP ---
+# Connect to the PostgreSQL database where all hospital data is stored.
+# Make sure to update password before deploying.
 conn = psycopg2.connect(
     host="localhost",
-    database="intern",
+    database="Hospital Mgmt",
     user="postgres",
-    password="300812"
+    password="*****"  # Consider moving to environment variables or config file for production use
 )
 
-# --- GEMINI SQL GENERATOR ---
-def ask_gemini_for_sql(nl_query):
-    schema = """ 
-    Tables:
-    - patient_app_appointment(appointment_date, doctor_name, session, ...)
-    - patient_app_billreports(service_type, total_amount, bill_date, ...)
-    - inpatient_app_procedure(procedure_name, procedure_date, outcome, ...)
-    - inventory_app_druginventory(expiry_date, stock_count, reorder_level, ...)
-    - patient_app_patient_details(referral_source, city, district, locality_name, registration_date, ...)
-    - inpatient_app_inpatient(admission_date, hospital_id, ...)
-    - inpatient_app_hospital(id, location, ...)
-    """  
+# --- MENU DISPLAY FUNCTION ---
+def show_menu():
+    # This function displays the available insights in a friendly menu format
+    print("""
+📊 Available Insights:
+1️⃣ Daily appointment list (filterable by doctor)
+2️⃣ Total revenue by service type
+3️⃣ Follow-up required for pregnancy results
+4️⃣ Monthly list of IUI/OI/IVF procedures
+5️⃣ Success rate of IUI/OI/IVF procedures
+6️⃣ Month-over-month new patient registrations
+7️⃣ Geographic distribution (city, district, locality)
+8️⃣ Referral source breakdown
+9️⃣ Medicines expiring in next X days
+🔟 Medicines below reorder level
+0️⃣ Exit
+""")
+    return input("Pick an option (0-10): ").strip()  # Accepts user input and removes extra spaces
 
-    prompt = f"""
-You are a highly accurate SQL generator for PostgreSQL.
-Given this database schema:
-{schema}
-
-Generate a syntactically correct SQL query for the instruction below. 
-The instruction might not match exact database field names or table names. You must understand the human intent, map it to the schema, and produce the right SQL.
-
-Instruction: "{nl_query}"
-
-Only return the SQL query. Do not include explanations, formatting, or extra characters.
-"""
-
-    model = genai.GenerativeModel('gemini-2.0-pro')  # Use pro model for better understanding of complex language
-    try:
-        response = model.generate_content(prompt)
-        sql_query = response.text.strip()
-        sql_query = sql_query.replace("```sql", "").replace("```", "").strip()
-        return sql_query
-    except Exception as e:
-        print(f"❌ Gemini API error: {e}")
-        return ""
-
-# --- EXECUTE SQL ---
-def execute_sql(sql):
-    if not sql:
-        print("No SQL to execute.")
-        return
-    with conn.cursor() as cursor:
+# --- FUNCTION TO EXECUTE SQL AND DISPLAY RESULTS ---
+def execute_and_print(sql):
+    # Accepts a SQL string, executes it, and prints results with headers
+    with conn.cursor() as cur:
         try:
-            cursor.execute(sql)
-            if cursor.description:  # SELECT
-                rows = cursor.fetchall()
-                if rows:
-                    for row in rows:
-                        print(row)
-                else:
-                    print("✅ No records found.")
-            else:  # INSERT/UPDATE/DELETE
-                conn.commit()
-                print("✅ Query executed successfully.")
+            cur.execute(sql)
+            rows = cur.fetchall()
+            columns = [desc[0] for desc in cur.description]  # Get column names from result set
+
+            print(f"\n🔹 Results ({len(rows)} rows):")
+            print("-" * 60)
+            print("\t".join(columns))  # Print headers
+            for row in rows:
+                # Print row-wise data with tab separation
+                print("\t".join(str(col) if col is not None else '' for col in row))
+            print("-" * 60)
         except Exception as e:
-            print(f"❌ SQL Execution error: {e}")
+            # Rollback in case of error to prevent DB lock or inconsistencies
+            print(f"❌ Error: {e}")
             conn.rollback()
 
-# --- PREDEFINED QUERIES ---
-def predefined_queries():
-    print("""
-📊 Insights Menu
-🔹 1️⃣ Daily appointment list (filterable by doctor/session) [1st priority]
-🔹 2️⃣ Total revenue by service type [1st priority]
-🔹 3️⃣ Patients needing pregnancy follow-up [2nd priority]
-🔹 4️⃣ Monthly IUI/OI/IVF list [2nd priority]
-🔹 5️⃣ Success rate IUI/OI/IVF [2nd priority]
-🔹 6️⃣ Month-over-month new registrations [3rd priority]
-🔹 7️⃣ Geographic distribution of patients [3rd priority]
-🔹 8️⃣ Referral source breakdown [3rd priority]
-🔹 9️⃣ Medicines expiring in X days [3rd priority]
-🔹 🔟 Medicines below reorder level [3rd priority]
-💬 Free text natural language query
-""")
-    return input("Enter your choice (1-10 / 💬): ")
-
-def build_sql(choice):
+# --- FUNCTION TO GENERATE SQL BASED ON MENU CHOICE ---
+def get_query(choice):
+    # Based on user's menu selection, generate the appropriate SQL query
     if choice == "1":
-        doctor = input("Doctor name (leave blank for all): ")
-        session = input("Session (leave blank for all): ")
-        date = input("Date (YYYY-MM-DD, default today): ") or datetime.today().strftime('%Y-%m-%d')
-        conditions = [f"appointment_date = '{date}'"]
-        if doctor:
-            conditions.append(f"doctor_name = '{doctor}'")
-        if session:
-            conditions.append(f"session = '{session}'")
-        where_clause = " AND ".join(conditions)
+        # Filter appointments by doctor and date (default = today)
+        doctor = input("Doctor name: ")
+        date = input("Date (YYYY-MM-DD) [default today]: ") or datetime.today().strftime('%Y-%m-%d')
         return f"""
-SELECT * FROM patient_app_appointment
-WHERE {where_clause}
-ORDER BY appointment_date;
+SELECT name, date, time, service_type, phonenumber
+FROM patient_app_appointment
+WHERE date = '{date}'
+AND doctor_id_id IN (
+    SELECT id FROM user_app_user
+    WHERE first_name ILIKE '%{doctor}%' OR user_name ILIKE '%{doctor}%'
+)
+ORDER BY time;
 """
+
     elif choice == "2":
+        # Calculate total revenue grouped by service type
         return """
-SELECT service_type, SUM(total_amount) AS total_revenue
-FROM patient_app_billreports
-GROUP BY service_type;
+SELECT a.service_type, SUM(b.bill_price) AS total_revenue
+FROM patient_app_billreports b
+JOIN patient_app_appointment a 
+  ON a.patient_id_id = b.patient_id_id
+GROUP BY a.service_type
+ORDER BY total_revenue DESC; 
 """
+
     elif choice == "3":
+        # List patients who underwent fertility procedures but did not mark status as success
         return """
-SELECT * FROM inpatient_app_procedure
-WHERE procedure_name IN ('IUI', 'IVF', 'OI')
-AND outcome IS NULL;
+SELECT p.id, p.first_name, p.last_name, pr.name AS procedure_name
+FROM patient_app_patient_details p
+JOIN inpatient_app_inpatient i ON p.id = i.patient_id
+JOIN inpatient_app_procedure pr ON i.procedure_id = pr.id
+WHERE pr.name IN ('IUI', 'IVF', 'OI')
+AND (i.status IS NULL OR i.status != 'success');
 """
+
     elif choice == "4":
-        month = input("Month (YYYY-MM, default current month): ") or datetime.today().strftime('%Y-%m')
+        # Get procedures (IUI/OI/IVF) performed in a specific month
+        month = input("Month (YYYY-MM): ")
         return f"""
-SELECT * FROM inpatient_app_procedure
-WHERE procedure_name IN ('IUI', 'IVF', 'OI')
-AND TO_CHAR(procedure_date, 'YYYY-MM') = '{month}';
+SELECT p.first_name, p.last_name, pr.name AS procedure_name, i.admission_date
+FROM patient_app_patient_details p
+JOIN inpatient_app_inpatient i ON p.id = i.patient_id
+JOIN inpatient_app_procedure pr ON i.procedure_id = pr.id
+WHERE pr.name IN ('IUI', 'IVF', 'OI')
+AND TO_CHAR(i.admission_date, 'YYYY-MM') = '{month}';
 """
+
     elif choice == "5":
+        # Calculate success rate percentage per fertility procedure type
         return """
-SELECT procedure_name, 
-COUNT(*) AS total_cases,
-COUNT(*) FILTER (WHERE outcome = 'success') AS success_count,
-ROUND(
-    COUNT(*) FILTER (WHERE outcome = 'success')::FLOAT / NULLIF(COUNT(*),0) * 100, 2
-) AS success_rate
-FROM inpatient_app_procedure
-WHERE procedure_name IN ('IUI', 'IVF', 'OI')
-GROUP BY procedure_name;
+SELECT pr.name AS procedure_name,
+ROUND(100 * COUNT(*) FILTER (WHERE i.status = 'success')::NUMERIC / NULLIF(COUNT(*), 0), 2) AS success_rate_percent
+FROM inpatient_app_inpatient i
+JOIN inpatient_app_procedure pr ON i.procedure_id = pr.id
+WHERE pr.name IN ('IUI', 'IVF', 'OI')
+GROUP BY pr.name;
 """
+
     elif choice == "6":
+        # Monthly new patient registrations grouped by year-month
         return """
-SELECT TO_CHAR(registration_date, 'YYYY-MM') AS month, COUNT(*) AS registrations
+SELECT TO_CHAR(created_date, 'YYYY-MM') AS month, COUNT(*) AS registrations
 FROM patient_app_patient_details
 GROUP BY month
 ORDER BY month;
 """
+
     elif choice == "7":
+        # Geographic distribution of patients (city, district, locality-wise)
         return """
-SELECT city, district, locality_name, COUNT(*) AS total
+SELECT city, district, locality_name, COUNT(*) AS patient_count
 FROM patient_app_patient_details
 GROUP BY city, district, locality_name
-ORDER BY total DESC;
+ORDER BY patient_count DESC;
 """
+
     elif choice == "8":
+        # Breakdown of patients by referral source
         return """
-SELECT referral_source, COUNT(*) AS total
+SELECT referred_by, COUNT(*) AS patient_count
 FROM patient_app_patient_details
-GROUP BY referral_source;
+GROUP BY referred_by
+ORDER BY patient_count DESC;
 """
+
     elif choice == "9":
-        days = int(input("Enter number of days (e.g. 30, 60, 90): "))
+        # List of medicines expiring in the next X days (user-defined)
+        days = int(input("Days until expiry (e.g. 30, 60, 90): "))
         target_date = (datetime.today() + timedelta(days=days)).strftime('%Y-%m-%d')
         return f"""
-SELECT * FROM inventory_app_druginventory
-WHERE expiry_date <= '{target_date}';
+SELECT name, expiry_date, quantity
+FROM inventory_app_druginventory
+WHERE expiry_date <= '{target_date}'
+ORDER BY expiry_date;
 """
+
     elif choice == "10":
+        # List of medicines that are below a critical reorder level (hardcoded < 10)
         return """
-SELECT * FROM inventory_app_druginventory
-WHERE stock_count < reorder_level;
+SELECT name, quantity
+FROM inventory_app_druginventory
+WHERE quantity < 10
+ORDER BY quantity;
 """
-    elif choice.strip() == "💬":
-        query = input("Enter your natural language question: ")
-        return ask_gemini_for_sql(query)
+
+    elif choice == "0":
+        # Exit condition
+        return None
+
     else:
-        print("Invalid choice.")
-        return ""
+        # Handle invalid menu inputs
+        print("❌ Invalid option.")
+        return "INVALID"
 
-# --- MAIN LOOP ---
+# --- MAIN PROGRAM EXECUTION ---
 def main():
-    print("🏥 Hospital AI SQL Assistant (supports human-like queries)")
+    print("🩺 Hospital Insights Tool")
     while True:
-        choice = predefined_queries()
-        if choice.lower() == "exit":
-            break
-        sql = build_sql(choice)
-        if sql:
-            print(f"\n🔍 Generated SQL:\n{sql}")
-            execute_sql(sql)
+        # Show options and take input
+        choice = show_menu()
+        query = get_query(choice)
 
+        # Exit condition
+        if query is None:
+            break
+
+        # Only execute valid queries
+        if query != "INVALID":
+            execute_and_print(query)
+
+    # Always close DB connection before exit
+    conn.close()
+    print("🔒 Database connection closed.")
+
+# Entry point check
 if __name__ == "__main__":
     main()
-    conn.close()
-    print("\n🔒 Connection closed.")
+
+# This script acts as a command-line analytics dashboard for hospital data.
+# It connects to a PostgreSQL database and allows querying of various operational and clinical insights.
+# To extend: Add authentication, export to CSV/PDF, or migrate to a web UI (e.g., using Streamlit or Flask).
+# This code is designed to be run in a Python environment with access to the specified PostgreSQL database.
+# Ensure psycopg2 is installed: pip install psycopg2-binary
+# Update database credentials as needed.
+
+#I have also tried creating a react based UI for this code, but it is working properly.i was thinking to add this feture as a component to it .

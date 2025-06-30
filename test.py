@@ -5,7 +5,7 @@ conn = psycopg2.connect(
     host="localhost",
     database="Hospital Mgmt",
     user="postgres",
-    password="300812"
+    password="****"
 )
 
 def get_database_schema():
