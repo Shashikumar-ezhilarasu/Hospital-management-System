@@ -20,7 +20,7 @@ conn = psycopg2.connect(
     host="localhost",
     database="Hospital Mgmt",
     user="postgres",
-    password="****"
+    password="300812"
 )
 
 # --- GEMINI SQL GENERATOR ---
