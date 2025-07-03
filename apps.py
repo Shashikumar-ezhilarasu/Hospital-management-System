@@ -13,7 +13,7 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY", ""))
 # PostgreSQL connection
 conn = psycopg2.connect(
     host="localhost",
-    database="Hospital Mgmt",
+    database="testing",
     user="postgres",
     password="300812"
 )
