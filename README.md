@@ -6,7 +6,7 @@ A modern web application for viewing hospital management insights and analytics.
 
 - Daily appointment list (filterable by doctor)
 - Total revenue by service type
-- Follow-up required for pregnancy results
+- Follow-up required for pregnancy results 
 - Monthly list of IUI/OI/IVF procedures
 - Success rate of IUI/OI/IVF procedures
 - Month-over-month new patient registrations
