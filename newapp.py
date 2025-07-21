@@ -15,7 +15,7 @@ conn = psycopg2.connect(
     host="localhost",
     database="testing2",
     user="postgres",
-    password="300812"
+    password="password"
 )
 
 # Accurate schema with relationships
