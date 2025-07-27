@@ -26,3 +26,5 @@ also create .env file and add your gemini api key there.
 I have also tried creating a react based UI for this code, but it is working properly.
 i was thinking to add this feature as a component to the current project.
 
+note :
+Add a backend for Django based framework
