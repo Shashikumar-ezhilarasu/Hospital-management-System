@@ -214,6 +214,31 @@
             background: #e3f2fd;
             border-radius: 10px;
             border-left: 4px solid #2196f3;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .examples.minimized {
+            padding: 8px 15px;
+            margin: 8px 0;
+        }
+
+        .examples.minimized .examples-content {
+            display: none;
+        }
+
+        .examples.minimized .examples-toggle {
+            cursor: pointer;
+            color: #1976d2;
+            font-weight: bold;
+        }
+
+        .examples.minimized .examples-toggle:hover {
+            text-decoration: underline;
+        }
+
+        .examples-toggle {
+            display: none;
         }
 
         .examples h4 {
@@ -315,15 +340,20 @@
         </div>
 
         <div class="chat-container">
-            <div class="examples">
-                <h4>💡 Example Queries:</h4>
-                <ul>
-                    <li onclick="setQuery('Show all patients')">📋 Show all patients</li>
-                    <li onclick="setQuery('List all doctors')">👨‍⚕️ List all doctors</li>
-                    <li onclick="setQuery('Show appointments for today')">📅 Show appointments for today</li>
-                    <li onclick="setQuery('Count total patients')">📊 Count total patients</li>
-                    <li onclick="setQuery('Show medicines in inventory')">💊 Show medicines in inventory</li>
-                </ul>
+            <div class="examples" id="examplesSection">
+                <div class="examples-toggle" onclick="toggleExamples()">
+                    💡 Show Example Queries
+                </div>
+                <div class="examples-content">
+                    <h4>💡 Example Queries:</h4>
+                    <ul>
+                        <li onclick="setQuery('Show all patients')">📋 Show all patients</li>
+                        <li onclick="setQuery('List all doctors')">👨‍⚕️ List all doctors</li>
+                        <li onclick="setQuery('Show appointments for today')">📅 Show appointments for today</li>
+                        <li onclick="setQuery('Count total patients')">📊 Count total patients</li>
+                        <li onclick="setQuery('Show medicines in inventory')">💊 Show medicines in inventory</li>
+                    </ul>
+                </div>
             </div>
 
             <div class="chat-messages" id="chatMessages">
@@ -341,6 +371,7 @@
                     class="query-input" 
                     placeholder="Type your question here... e.g., 'Show all patients'"
                     onkeypress="handleKeyPress(event)"
+                    oninput="handleInput(event)"
                 >
                 <button id="sendBtn" class="send-btn" onclick="sendQuery()">
                     Send
@@ -388,11 +419,42 @@
 
         function setQuery(query) {
             document.getElementById('queryInput').value = query;
+            // Minimize examples after user selects a query
+            minimizeExamples();
+        }
+
+        function minimizeExamples() {
+            const examplesSection = document.getElementById('examplesSection');
+            const toggle = examplesSection.querySelector('.examples-toggle');
+            
+            examplesSection.classList.add('minimized');
+            toggle.style.display = 'block';
+        }
+
+        function toggleExamples() {
+            const examplesSection = document.getElementById('examplesSection');
+            const toggle = examplesSection.querySelector('.examples-toggle');
+            
+            if (examplesSection.classList.contains('minimized')) {
+                examplesSection.classList.remove('minimized');
+                toggle.style.display = 'none';
+            } else {
+                examplesSection.classList.add('minimized');
+                toggle.style.display = 'block';
+            }
         }
 
         function handleKeyPress(event) {
             if (event.key === 'Enter') {
                 sendQuery();
+            }
+        }
+
+        function handleInput(event) {
+            // Minimize examples when user starts typing
+            const inputValue = event.target.value.trim();
+            if (inputValue.length > 0) {
+                minimizeExamples();
             }
         }
 
