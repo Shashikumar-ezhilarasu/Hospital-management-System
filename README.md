@@ -12,7 +12,7 @@ A modern web application for viewing hospital management insights and analytics.
 - Month-over-month new patient registrations
 - Geographic distribution (city, district, locality)
 - Referral source breakdown
-- Medicines expiring in next X days
+- Medicines expiring in next X days 
 - Medicines below reorder level
 
 For pre-defined query execution check finalapp.py
