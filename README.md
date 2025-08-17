@@ -4,7 +4,7 @@ A full-stack Django web application that enables natural language querying of yo
 
 ---
 
-## 🚀 Features
+##  Features
 
 ### 1. **Natural Language Querying**
 - Ask questions in plain English (e.g., "Show all patients", "List appointments for today")
@@ -74,7 +74,7 @@ A full-stack Django web application that enables natural language querying of yo
 
 ---
 
-## 📞 Example Queries
+## Example Queries
 - Show all patients
 - List all doctors
 - Show appointments for today
@@ -83,7 +83,7 @@ A full-stack Django web application that enables natural language querying of yo
 
 ---
 
-## 📦 Tech Stack
+##  Tech Stack
 - Django
 - PostgreSQL
 - Google Gemini AI
@@ -92,5 +92,5 @@ A full-stack Django web application that enables natural language querying of yo
 
 ---
 
-## 🛡️ License
+## License
 MIT
