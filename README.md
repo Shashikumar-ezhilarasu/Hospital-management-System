@@ -2,6 +2,10 @@
 
 A full-stack Django web application that enables natural language querying of your hospital database using AI (Google Gemini) and displays results in a modern, responsive chat interface.
 
+https://github.com/user-attachments/assets/c9bacf88-6606-42e8-8648-83b68019edbb
+
+
+
 ---
 
 ##  Features
