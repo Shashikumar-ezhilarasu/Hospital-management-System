@@ -1,4 +1,4 @@
-# 🏥 Hospital Management System Chatbot
+
 
 A full-stack Django web application that enables natural language querying of your hospital database using AI (Google Gemini) and displays results in a modern, responsive chat interface.
 
